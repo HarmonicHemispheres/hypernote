@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>HyperNote</title>
+    <!-- Materialize CSS -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" />
+
+    <!-- Editor‑JS core + tools -->
+    <script src="https://cdn.jsdelivr.net/npm/@editorjs/editorjs@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@editorjs/header@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@editorjs/list@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@editorjs/paragraph@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@editorjs/table@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@editorjs/image@latest"></script>
+
+    <style>
+        /* ------- Color Variables & Theme ------- */
+        :root {
+            --bg-color: #ffffff;
+            --text-color: #212121;
+            --sidebar-bg: #fafafa;
+            --sidebar-border: #e0e0e0;
+            --sidebar-selected-bg: #e3f2fd;
+            --editor-bg: #ffffff;
+            --modal-bg: #ffffff;
+            --modal-footer-border: #e0e0e0;
+            --input-border: #9e9e9e;
+            --input-focus-border: #26a69a; /* Materialize teal */
+            --btn-flat-bg: #f5f5f5;
+            --icon-color: rgba(0,0,0,.6);
+            --secondary-text-color: #757575;
+            --link-color: #039be5; /* Materialize light blue */
+            --shadow-color: rgba(0,0,0,.2);
+            --slash-menu-bg: #fff;
+            --slash-menu-border: #e0e0e0;
+            --slash-menu-hover-bg: #f5f5f5;
+            --slash-menu-shadow: rgba(0,0,0,.1);
+            --saved-path-color: #9e9e9e; /* Add variable for saved path */
+        }
+
+        body.dark-theme {
+            --bg-color: #212121;
+            --text-color: #e0e0e0;
+            --sidebar-bg: #303030;
+            --sidebar-border: #383838; /* Adjusted border for visibility */
+            --sidebar-selected-bg: #2196f3; /* Materialize blue for selected item */
+            --sidebar-item-bg-dark: #282828; /* Slightly darker bg for non-selected items */
+            --editor-bg: #2a2a2a;
+            --modal-bg: #424242;
+            --modal-footer-border: #555555;
+            --input-border: #757575;
+            --input-focus-border: #80cbc4; /* Lighter teal */
+            --btn-flat-bg: #555555;
+            --icon-color: rgba(255,255,255,.7);
+            --secondary-text-color: #bdbdbd;
+            --link-color: #4fc3f7; /* Lighter blue */
+            --shadow-color: rgba(0,0,0,.5);
+            --slash-menu-bg: #333;
+            --slash-menu-border: #555;
+            --slash-menu-hover-bg: #444;
+            --slash-menu-shadow: rgba(0,0,0,.3);
+            --saved-path-color: var(--secondary-text-color); /* Use secondary text color for dark theme */
+        }
+
+        /* Apply variables */
+        body { background-color: var(--bg-color); color: var(--text-color); }
+        input, select, textarea { color: var(--text-color) !important; border-bottom-color: var(--input-border) !important; }
+        input:focus:not([readonly]), textarea:focus:not([readonly]) { border-bottom: 1px solid var(--input-focus-border) !important; box-shadow: 0 1px 0 0 var(--input-focus-border) !important; }
+        select:focus { border-bottom: 1px solid var(--input-focus-border) !important; }
+        label { color: var(--secondary-text-color) !important; }
+        label.active { color: var(--input-focus-border) !important; }
+        .dropdown-content li>a, .dropdown-content li>span { color: var(--link-color) !important; } /* Select dropdown text */
+        body.dark-theme .dropdown-content { background-color: var(--modal-bg); } /* Select dropdown background */
+        body.dark-theme .select-wrapper input.select-dropdown { border-bottom-color: var(--input-border) !important; } /* Select dropdown border */
+        /* Explicitly set note title color for dark theme */
+        body.dark-theme .note-title-display { color: var(--text-color); }
+        /* Override specific button styles for dark theme */
+        body.dark-theme #settingsBtn {
+             background-color: var(--btn-flat-bg) !important; /* Override grey lighten-3 */
+             color: var(--text-color) !important;
+        }
+        body.dark-theme #settingsBtn i {
+             color: var(--text-color) !important; /* Ensure icon color matches */
+        }
+        /* Apply saved path color variable */
+        body.dark-theme .saved-path { color: var(--saved-path-color); }
+        /* Apply dark theme sidebar item background */
+        body.dark-theme #noteList li { background-color: var(--sidebar-item-bg-dark); }
+        /* Ensure selected item background overrides default */
+        body.dark-theme #noteList li.selected { background-color: var(--sidebar-selected-bg); }
+        /* Override Materialize collection border in dark mode */
+        body.dark-theme .collection { border-color: var(--sidebar-border); }
+        /* Set text color for selected item in dark mode */
+        body.dark-theme #noteList li.selected .note-title-display,
+        body.dark-theme #noteList li.selected .counts,
+        body.dark-theme #noteList li.selected .saved-path {
+            color: #ffffff !important; /* White text for selected item */
+        }
+
+
+        /* ------- Layout ------- */
+        html,body{height:100%;margin:0;overflow:hidden}
+        .app-wrapper{display:flex;height:100%;position:relative}
+
+        /* ------- Sidebar ------- */
+        #sidebar{width:300px;background:var(--sidebar-bg);border-right:1px solid var(--sidebar-border);display:flex;flex-direction:column;flex-shrink:0;transition:width .3s ease,padding .3s ease,border .3s ease, background-color .3s ease, border-color .3s ease;overflow:hidden}
+        #noteList{flex:1 1 auto;overflow-y:auto;margin:0;padding:0} /* Remove margin from collection */
+        #noteList li{position:relative; border-bottom-color: var(--sidebar-border) !important; transition: background-color 0.2s ease;} /* This now uses the adjusted border color */
+        .note-title-display{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:bold;max-width:calc(100% - 50px); color: var(--text-color);}
+        #noteList li.selected{background:var(--sidebar-selected-bg)}
+        .counts{font-size:.8rem;color:var(--secondary-text-color);display:block;margin-top:4px}
+        .actions{visibility:hidden;position:absolute;right:16px;top:12px;display:flex;gap:8px}
+        #noteList li:hover .actions{visibility:visible}
+        .actions i{cursor:pointer;font-size:1.1rem;color:var(--icon-color)}
+        .saved-path{font-size:.7rem;color:var(--saved-path-color);margin-top:2px} /* Use variable */
+        .sidebar-bottom{padding:12px;border-top:1px solid var(--sidebar-border);transition:padding .3s ease,border .3s ease, border-color .3s ease}
+        .btn-flat { background-color: var(--btn-flat-bg); color: var(--text-color); }
+
+        /* ------- Editor ------- */
+        #editorHolder{flex:1 1 auto;overflow-y:auto;padding:16px;transition:margin-left .3s ease;position:relative; background-color: var(--editor-bg);}
+        #editorjs{max-width:850px;margin:0 auto}
+        /* Editor.js specific overrides for dark theme */
+        body.dark-theme .ce-block__content, body.dark-theme .ce-toolbar__content { background-color: var(--editor-bg); }
+        body.dark-theme .ce-toolbar__actions { background-color: var(--sidebar-bg); border-color: var(--sidebar-border); }
+        body.dark-theme .ce-toolbar__plus, body.dark-theme .ce-toolbar__settings-btn { color: var(--icon-color); }
+        body.dark-theme .ce-toolbar__plus:hover, body.dark-theme .ce-toolbar__settings-btn:hover { background-color: var(--btn-flat-bg); }
+        body.dark-theme .ce-inline-toolbar {
+        body.dark-theme .ce-popover { background-color: var(--sidebar-bg); border-color: var(--sidebar-border); }
+        body.dark-theme .cdx-input, body.dark-theme .ce-popover__item, body.dark-theme .ce-settings__button { color: var(--text-color); }
+        body.dark-theme .ce-popover__item:hover, body.dark-theme .ce-settings__button:hover { background-color: var(--btn-flat-bg) !important; }
+        body.dark-theme .ce-header[contentEditable=true]:empty::before, body.dark-theme .cdx-input::placeholder { color: var(--secondary-text-color); }
+        body.dark-theme .tc-table, body.dark-theme .tc-row, body.dark-theme .tc-cell { border-color: var(--sidebar-border); }
+        body.dark-theme .tc-add-column, body.dark-theme .tc-add-row { color: var(--icon-color); }
+        body.dark-theme .tc-add-column:hover, body.dark-theme .tc-add-row:hover { background-color: var(--btn-flat-bg); }
+        body.dark-theme .image-tool__caption[data-placeholder]:empty::before { color: var(--secondary-text-color); }
+
+
+        /* ------- Toggle Btn ------- */
+        #toggleSidebarBtn{position:absolute;top:10px;left:10px;z-index:10;cursor:pointer;background:var(--sidebar-bg);border-radius:50%;padding:5px;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 5px var(--shadow-color);transition:left .3s ease, background-color .3s ease}
+        #toggleSidebarBtn i{font-size:24px;color:var(--icon-color)}
+
+        /* ------- Collapsed state ------- */
+        .sidebar-collapsed #sidebar{width:0;padding-left:0;padding-right:0;border-right-width:0}
+        .sidebar-collapsed #sidebar>*{visibility:hidden;opacity:0;transition:visibility 0s .3s,opacity .3s ease}
+
+        /* ------- Slash menu ------- */
+        .slash-dropdown{position:absolute;background:var(--slash-menu-bg);border:1px solid var(--slash-menu-border);border-radius:4px;box-shadow:0 4px 12px var(--slash-menu-shadow);z-index:100;min-width:180px;max-height:200px;overflow-y:auto}
+        .slash-item{padding:8px 12px;cursor:pointer;display:flex;align-items:center;gap:8px;font-size:.9rem; color: var(--text-color);}
+        .slash-item:hover{background:var(--slash-menu-hover-bg)}
+        .slash-item i{font-size:1.2rem;color:var(--secondary-text-color)}
+
+        /* ------- Settings Modal ------- */
+        .modal {
+            max-width: 98vw !important;
+            width: 95vw !important;
+            max-height: 98vh !important;
+            height: 95vh !important;
+            overflow: auto !important;
+            background-color: var(--modal-bg);
+            color: var(--text-color);
+        }
+        .modal .modal-content {
+            padding-top: 32px;
+            padding-bottom: 32px;
+        }
+        .modal .modal-footer{padding:4px 16px; background-color: var(--modal-bg); border-top: 1px solid var(--modal-footer-border);}
+        .modal .modal-close { color: var(--link-color); }
+        .modal h4 { color: var(--text-color); }
+        /* Materialize Switch Styles */
+        .switch label input[type=checkbox]:checked+.lever { background-color: #64b5f6; } /* Light Blue */
+        .switch label input[type=checkbox]:checked+.lever:after { background-color: #2196f3; } /* Blue */
+        body.dark-theme .switch label .lever { background-color: #555; }
+        body.dark-theme .switch label input[type=checkbox]:checked+.lever { background-color: #424242; }
+        body.dark-theme .switch label input[type=checkbox]:checked+.lever:after { background-color: #64b5f6; } /* Light Blue for dark */
+
+
+        /* ------- List Indentation ------- */
+        #editorHolder {
+            /* Default value, will be overridden by JS */
+            --list-nesting-offset: 25px;
+        }
+        /* Target the nested list items generated by @editorjs/list */
+        /* Apply padding to the list item itself for visual indentation */
+        #editorHolder .cdx-list__item--nested {
+             padding-left: var(--list-nesting-offset) !important;
+        }
+        #addNoteBtn {
+            width: 100%;
+            display: block; /* Ensure it's a block element */
+            box-sizing: border-box; /* Include padding/border in width calculation */
+        }
+    </style>
+</head>
+<body>
+<div class="app-wrapper">
+    <div id="toggleSidebarBtn" title="Toggle Sidebar"><i class="material-icons">chevron_left</i></div>
+
+    <div id="sidebar" class="z-depth-1">
+        <ul id="noteList" class="collection" style="padding-top:50px"></ul>
+        <div class="sidebar-bottom">
+            <a id="addNoteBtn" class="btn waves-effect waves-light blue"><i class="material-icons left">add</i>New Note</a>
+            <a id="settingsBtn" class="btn-flat waves-effect waves-light grey lighten-3" style="margin-top: 8px; width: 100%; text-align: center;"><i class="material-icons left">settings</i>Settings</a>
+        </div>
+    </div>
+
+    <div id="editorHolder"><div id="editorjs"></div></div>
+</div>
+
+<!-- Settings Modal Structure -->
+<div id="settingsModal" class="modal">
+    <div class="modal-content">
+        <h4>Settings</h4>
+        <div class="row">
+            <div class="input-field col s12 m6">
+              <input id="listIndentInput" type="number" min="10" max="100" step="1">
+              <label for="listIndentInput">List Indent Size (px)</label>
+            </div>
+            <div class="input-field col s12 m6">
+                <div class="switch" style="padding-top: 25px;">
+                    <label>
+                        Light
+                        <input type="checkbox" id="themeSwitch">
+                        <span class="lever"></span>
+                        Dark
+                    </label>
+                </div>
+            </div>
+        </div>
+        <div class="row">
+            <div class="input-field col s12 m6">
+              <input id="openaiApiKeyInput" type="password">
+              <label for="openaiApiKeyInput">OpenAI API Key</label>
+            </div>
+            <div class="input-field col s12 m6">
+              <select id="openaiModelSelect">
+                <option value="gpt-4.1-mini" selected>GPT-4.1-mini (Default)</option>
+                <option value="gpt-4.1">GPT-4.1</option>
+                <option value="o4-mini">o4-mini</option>
+                <option value="o3">o3</option>
+                <option value="o3-mini">o3-mini</option>
+                <option value="gpt-4o">GPT-4o</option>
+              </select>
+              <label>OpenAI Model</label>
+            </div>
+        </div>
+    </div>
+    <div class="modal-footer">
+        <a href="#!" class="modal-close waves-effect waves-green btn-flat">Close</a>
+    </div>
+</div>
+
+<!-- Materialize JS -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
+<script>
+/* ========= Utility ========= */
+const debounce=(fn,delay=400)=>{let t;return(...a)=>{clearTimeout(t);t=setTimeout(()=>fn(...a),delay)}};
+/* Updated extractText to handle nested lists */
+const extractTextFromItem = item => {
+    let text = item.content || '';
+    if (item.items && item.items.length > 0) {
+        text += ' ' + item.items.map(extractTextFromItem).join(' ');
+    }
+    return text;
+};
+const extractText=blocks=>blocks.map(b=>{
+    const d=b.data||{};
+    if (b.type === 'list' && d.items) {
+        return d.items.map(extractTextFromItem).join(' ');
+    }
+    return(d.text||(d.items?d.items.map(i=>i.text||'').join(' '):'')||d.caption||'').replace(/<[^>]+>/g,' '); // Keep old logic for other types just in case
+}).join(' ');
+const getCounts=blocks=>{const txt=extractText(blocks);const words=txt.trim().split(/\s+/).filter(Boolean);return{words:words.length,chars:txt.replace(/\s+/g,'').length}};
+
+/* ========= LocalStorage keys ========= */
+const NOTES_KEY='hypernote_notes';
+const SIDEBAR_KEY='hypernote_sidebar_collapsed';
+const SETTINGS_LIST_INDENT_KEY = 'hypernote_settings_list_indent';
+const SETTINGS_OPENAI_API_KEY = 'hypernote_settings_openai_api_key';
+const SETTINGS_OPENAI_MODEL = 'hypernote_settings_openai_model';
+const SETTINGS_THEME_KEY = 'hypernote_settings_theme'; // New key for theme
+
+const loadNotes=()=>{try{return JSON.parse(localStorage.getItem(NOTES_KEY))||[]}catch{return[]}};const saveNotes=()=>localStorage.setItem(NOTES_KEY,JSON.stringify(notes));
+const isSidebarCollapsed=()=>localStorage.getItem(SIDEBAR_KEY)==='true';
+const setSidebarCollapsed=val=>localStorage.setItem(SIDEBAR_KEY,val);
+
+// Settings functions
+const loadListIndentSetting = () => parseInt(localStorage.getItem(SETTINGS_LIST_INDENT_KEY) || '25', 10);
+const saveListIndentSetting = (value) => localStorage.setItem(SETTINGS_LIST_INDENT_KEY, value);
+const loadOpenAIApiKey = () => localStorage.getItem(SETTINGS_OPENAI_API_KEY) || '';
+const saveOpenAIApiKey = (value) => localStorage.setItem(SETTINGS_OPENAI_API_KEY, value);
+const loadOpenAIModel = () => localStorage.getItem(SETTINGS_OPENAI_MODEL) || 'gpt-4.1-mini';
+const saveOpenAIModel = (value) => localStorage.setItem(SETTINGS_OPENAI_MODEL, value);
+const loadThemeSetting = () => localStorage.getItem(SETTINGS_THEME_KEY) || 'light'; // New function (default light)
+const saveThemeSetting = (value) => localStorage.setItem(SETTINGS_THEME_KEY, value); // New function
+
+
+/* ========= State ========= */
+let notes=loadNotes();
+let active=0,editor;
+let listIndentSize = loadListIndentSetting();
+let openaiApiKey = loadOpenAIApiKey();
+let openaiModel = loadOpenAIModel();
+let currentTheme = loadThemeSetting(); // Load initial theme
+
+/* ========= DOM ========= */
+const appWrapper=document.querySelector('.app-wrapper');
+const toggleBtn=document.getElementById('toggleSidebarBtn');
+const toggleIcon=toggleBtn.querySelector('i');
+const editorHolder=document.getElementById('editorHolder');
+const settingsBtn = document.getElementById('settingsBtn');
+const settingsModalElem = document.getElementById('settingsModal');
+const listIndentInput = document.getElementById('listIndentInput');
+const openaiApiKeyInput = document.getElementById('openaiApiKeyInput');
+const openaiModelSelect = document.getElementById('openaiModelSelect');
+const themeSwitch = document.getElementById('themeSwitch'); // New theme switch element
+let settingsModalInstance;
+let modelSelectInstance; // For Materialize select
+
+/* ========= Title extraction ========= */
+function extractTitleFromFirstBlock(blocks){
+    if(!blocks||!blocks.length)return'Untitled Note';
+    const first=blocks[0];
+    const kind=first.type||first.tool; // data object uses .type, editor API uses .tool
+    let text='';
+
+    if(kind==='header')text=first.data.text;
+    else if(kind==='paragraph')text=first.data.text;
+    // Updated for the new list tool structure
+    else if(kind==='list'){
+        const item=first.data.items?.[0];
+        text=item?.content||''; // Use content from the first item
+    }
+    text=text.replace(/<[^>]*>/g,'').trim();
+    return text||'Untitled Note';
+}
+
+/* ========= Editor init ========= */
+function initEditor(data){
+    if(editor)editor.destroy();
+    editor=new EditorJS({
+        holder:'editorjs',
+        placeholder:'Start writing or type "/" for commands…',
+        data,
+        tools:{
+            paragraph:{class:Paragraph,inlineToolbar:true},
+            header:{class:Header,config:{levels:[1,2,3],defaultLevel:1}},
+            list: {
+              class: EditorjsList, // Use the imported class name
+              inlineToolbar: true,
+              config: {
+                defaultStyle: 'unordered' // Or 'ordered' or 'checklist'
+              },
+            },
+            table: {
+                class: Table,
+                inlineToolbar: true,
+                config: {
+                    rows: 2,
+                    cols: 2
+                }
+            },
+            image: {
+                class: window.ImageTool,
+                config: {
+                    uploader: {
+                        uploadByFile(file) {
+                            return new Promise((resolve, reject) => {
+                                const reader = new FileReader();
+                                reader.onload = () => {
+                                    resolve({
+                                        success: 1,
+                                        file: {
+                                            url: reader.result
+                                        }
+                                    });
+                                };
+                                reader.onerror = reject;
+                                reader.readAsDataURL(file);
+                            });
+                        },
+                        uploadByUrl(url) {
+                            // Just return the URL as is (no backend)
+                            return Promise.resolve({
+                                success: 1,
+                                file: {
+                                    url: url
+                                }
+                            });
+                        }
+                    },
+                    captionPlaceholder: 'Add a caption...',
+                    features: {
+                        border: true,
+                        caption: 'optional',
+                        stretch: true
+                    }
+                }
+            }
+        },
+        onChange:debounce(async()=>{
+            const d=await editor.save();
+            if(!notes[active])return;
+            notes[active].data=d;
+            notes[active].counts=getCounts(d.blocks);
+            const title=extractTitleFromFirstBlock(d.blocks);
+            if(notes[active].title!==title){
+                notes[active].title=title;
+                renderSidebar();
+            }
+            saveNotes();
+        }),
+        onReady:()=>{ 
+            attachEditorListeners();
+            // ensure sidebar shows correct starting title
+            if(notes[active]){
+                const title=extractTitleFromFirstBlock(notes[active].data?.blocks||[]);
+                if(notes[active].title!==title){
+                    notes[active].title=title;
+                    renderSidebar();
+                    saveNotes();
+                }
+            }
+        }
+    });
+}
+
+/* ========= Sidebar render ========= */
+function renderSidebar(){
+    const ul=document.getElementById('noteList');
+    ul.innerHTML='';
+    notes.forEach((n,i)=>{
+        const li=document.createElement('li');
+        li.className='collection-item'+(i===active?' selected':'');
+        li.dataset.idx=i;
+        const title=n.title||'Untitled Note';
+        li.innerHTML=`<div><span class="note-title-display" title="${title}">${title}</span><div class="actions"><i class="material-icons save-icon" title="Save">file_download</i><i class="material-icons delete-icon" title="Delete">delete</i></div></div>`;
+        const counts=document.createElement('span');
+        counts.className='counts';
+        counts.textContent=`${n.counts?.words||0}w / ${n.counts?.chars||0}c`;
+        li.appendChild(counts);
+        if(n.savedPath){const sp=document.createElement('div');sp.className='saved-path';sp.textContent=n.savedPath;li.appendChild(sp);} ul.appendChild(li);
+    });
+    const activeItem=ul.querySelector('li.selected');
+    activeItem?.scrollIntoView({block:'nearest',behavior:'smooth'});
+}
+
+/* ========= Note CRUD ========= */
+async function addNote(){
+    if(editor&&notes[active]){
+        try{const cur=await editor.save();notes[active].data=cur;notes[active].counts=getCounts(cur.blocks);}catch{}}
+    notes.push({title:'Untitled Note',data:{blocks:[]},counts:{words:0,chars:0},savedPath:''});
+    saveNotes();
+    renderSidebar();
+    loadNote(notes.length-1);
+}
+
+async function loadNote(idx){
+    if(idx<0||idx>=notes.length)return;
+    if(editor&&notes[active]){
+        try{const cur=await editor.save();notes[active].data=cur;notes[active].counts=getCounts(cur.blocks);}catch{}}
+    active=idx;
+    document.getElementById('editorjs').innerHTML='';
+    initEditor(notes[active].data||{blocks:[]});
+    renderSidebar();
+    saveNotes();
+}
+
+async function deleteNote(idx){
+    if(!confirm('Delete this note?'))return;
+    if(notes.length===1)return M.toast({html:'Cannot delete last note'});
+    if(editor&&notes[active]&&idx!==active){
+        try{const cur=await editor.save();notes[active].data=cur;notes[active].counts=getCounts(cur.blocks);}catch{}}
+    notes.splice(idx,1);
+    if(active>=idx)active=Math.max(0,active-1);
+    saveNotes();
+    renderSidebar();
+    loadNote(active);
+}
+
+async function downloadNote(idx){
+    if(editor&&idx===active){
+        try{const d=await editor.save();notes[idx].data=d;notes[idx].counts=getCounts(d.blocks);const t=extractTitleFromFirstBlock(d.blocks);notes[idx].title=t;}catch{}}
+    const file=notes[idx];
+    const fn=(file.title||'Untitled_Note').replace(/[\s/\\?%*:|"<>]/g,'_')+'.json';
+    const blob=new Blob([JSON.stringify(file.data,null,2)],{type:'application/json'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');a.href=url;a.download=fn;document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url);
+    notes[idx].savedPath=`Saved to: Downloads/${fn}`;
+    renderSidebar();
+    saveNotes();
+}
+
+/* ========= Sidebar toggle ========= */
+function updateSidebarView(collapsed){
+    if(collapsed){appWrapper.classList.add('sidebar-collapsed');toggleIcon.textContent='menu';}
+    else{appWrapper.classList.remove('sidebar-collapsed');toggleIcon.textContent='chevron_left';}
+}
+function toggleSidebar(){const c=appWrapper.classList.contains('sidebar-collapsed');setSidebarCollapsed(!c);updateSidebarView(!c);}
+
+/* ========= Slash menu (unchanged core) ========= */
+let slashDropdown=null,currentSlashBlock=-1;
+function hideSlashMenu(){slashDropdown?.remove();slashDropdown=null;currentSlashBlock=-1;document.removeEventListener('click',outside,true);document.removeEventListener('keydown',esc);} 
+function outside(e){if(slashDropdown&&!slashDropdown.contains(e.target)){hideSlashMenu();}}
+function esc(e){if(e.key==='Escape')hideSlashMenu();}
+function showSlashMenu(idx,el){
+    hideSlashMenu();
+    currentSlashBlock=idx;
+    slashDropdown=document.createElement('div');
+    slashDropdown.className='slash-dropdown';
+    // Define separate commands for each heading level and other tools
+    const cmds=[
+        {level: 1, icon: 'looks_one', label: 'Heading 1', tool: 'header'},
+        {level: 2, icon: 'looks_two', label: 'Heading 2', tool: 'header'},
+        {level: 3, icon: 'looks_3', label: 'Heading 3', tool: 'header'},
+        {icon: 'format_list_bulleted', label: 'Bulleted List', tool: 'list', data: { style: 'unordered' } },
+        {icon: 'format_list_numbered', label: 'Numbered List', tool: 'list', data: { style: 'ordered' } },
+        {icon: 'image', label: 'Image', tool: 'image'},
+        {icon: 'table_chart', label: 'Table', tool: 'table'}
+        // Add other commands here if needed
+    ];
+    cmds.forEach(c=>{
+        const item=document.createElement('div');
+        item.className='slash-item';
+        item.innerHTML=`<i class="material-icons">${c.icon}</i> ${c.label}`;
+        item.onclick=async()=>{
+            await editor.blocks.delete(idx);
+            // Prepare data based on the command type
+            let blockData = {};
+            if (c.tool === 'header') {
+                // Pass the specific level when creating a header block
+                blockData = { level: c.level, text: '' };
+            } else if (c.tool === 'list') {
+                blockData = { style: c.data.style, items: [] };
+            } else if (c.tool === 'table') {
+                blockData = { withHeadings: false, content: [['', ''], ['', '']] };
+            } else if (c.tool === 'image') {
+                blockData = {};
+            }
+            // Insert the new block
+            await editor.blocks.insert(c.tool, blockData, {}, idx, true);
+            editor.caret.setToBlock(idx,'start');
+            hideSlashMenu();
+        };
+        slashDropdown.appendChild(item);
+    });
+    const r=el.getBoundingClientRect(),er=editorHolder.getBoundingClientRect();slashDropdown.style.top=`${r.bottom-er.top+editorHolder.scrollTop+5}px`;slashDropdown.style.left=`${r.left-er.left+5}px`;editorHolder.appendChild(slashDropdown);
+    setTimeout(()=>{document.addEventListener('click',outside,true);document.addEventListener('keydown',esc);},0);
+}
+function handleKeyUp(e){if(e.key==='/'){const idx=editor.blocks.getCurrentBlockIndex();editor.blocks.getBlockByIndex(idx).then(b=>{if(b&&b.tool==='paragraph'&&b.data.text.trim()==='/')showSlashMenu(idx,b.holder);});}
+ else if(currentSlashBlock!==-1){const idx=editor.blocks.getCurrentBlockIndex();if(idx===currentSlashBlock)editor.blocks.getBlockByIndex(idx).then(b=>{if(!b||b.tool!=='paragraph'||!b.data.text.startsWith('/'))hideSlashMenu();});else hideSlashMenu();}
+ else if(e.key==='Escape')hideSlashMenu();}
+function handleKeyDown(e){/*if(e.key==='Tab'){const idx=editor.blocks.getCurrentBlockIndex();editor.blocks.getBlockByIndex(idx).then(b=>{if(b.tool==='checklist'){e.preventDefault();}});}*/}
+function attachEditorListeners(){const el=document.getElementById('editorjs');el.addEventListener('keyup',handleKeyUp);el.addEventListener('keydown',handleKeyDown);}
+
+/* ========= Settings ========= */
+function applyListIndentSetting(value) {
+    listIndentSize = parseInt(value, 10);
+    if (isNaN(listIndentSize)) listIndentSize = 25; // Default fallback
+    editorHolder.style.setProperty('--list-nesting-offset', `${listIndentSize}px`);
+    console.log(`Applied list indent size: ${listIndentSize}px`);
+}
+
+function applyTheme(theme) { // New function to apply theme class
+    if (theme === 'dark') {
+        document.body.classList.add('dark-theme');
+    } else {
+        document.body.classList.remove('dark-theme');
+    }
+    currentTheme = theme;
+    console.log(`Applied theme: ${theme}`);
+}
+
+function handleIndentSettingChange(event) {
+    const newValue = event.target.value;
+    applyListIndentSetting(newValue);
+    saveListIndentSetting(newValue);
+}
+
+function handleApiKeyChange(event) {
+    openaiApiKey = event.target.value;
+    saveOpenAIApiKey(openaiApiKey);
+    console.log('OpenAI API Key updated.');
+}
+
+function handleModelChange(event) {
+    openaiModel = event.target.value;
+    saveOpenAIModel(openaiModel);
+    console.log(`OpenAI Model set to: ${openaiModel}`);
+}
+
+function handleThemeChange(event) { // New handler for theme switch
+    const newTheme = event.target.checked ? 'dark' : 'light';
+    applyTheme(newTheme);
+    saveThemeSetting(newTheme);
+}
+
+
+/* ========= Event listeners ========= */
+document.getElementById('addNoteBtn').onclick=addNote;
+document.getElementById('noteList').onclick=e=>{const li=e.target.closest('li[data-idx]');if(!li)return;const idx=+li.dataset.idx;if(e.target.classList.contains('save-icon'))return downloadNote(idx);if(e.target.classList.contains('delete-icon'))return deleteNote(idx);if(idx!==active)loadNote(idx);};
+toggleBtn.onclick=toggleSidebar;
+settingsBtn.onclick = () => settingsModalInstance.open();
+listIndentInput.addEventListener('change', handleIndentSettingChange);
+openaiApiKeyInput.addEventListener('change', handleApiKeyChange);
+openaiModelSelect.addEventListener('change', handleModelChange);
+themeSwitch.addEventListener('change', handleThemeChange); // Add listener for theme switch
+
+
+/* ========= Init ========= */
+document.addEventListener('DOMContentLoaded',()=>{
+
+    // Apply initial theme FIRST so other components initialize with correct colors
+    applyTheme(currentTheme);
+
+    // Initialize Materialize components
+    settingsModalInstance = M.Modal.init(settingsModalElem);
+    modelSelectInstance = M.FormSelect.init(openaiModelSelect); // Initialize select
+
+    // Apply initial settings values to inputs
+    listIndentInput.value = listIndentSize;
+    applyListIndentSetting(listIndentSize); // Apply indent CSS
+    openaiApiKeyInput.value = openaiApiKey;
+    openaiModelSelect.value = openaiModel;
+    themeSwitch.checked = (currentTheme === 'dark'); // Set switch state based on loaded theme
+
+    M.FormSelect.init(openaiModelSelect); // Re-initialize select after setting value
+    M.updateTextFields(); // Update labels for pre-filled inputs
+
+    updateSidebarView(isSidebarCollapsed());
+    if(!notes.length){addNote();return;}
+    notes=notes.map(n=>({...n,title:n.title??extractTitleFromFirstBlock(n.data?.blocks||[])}));
+    if(active<0||active>=notes.length)active=0;
+    renderSidebar();
+    loadNote(active);
+});
+</script>
+</body>
+</html>
